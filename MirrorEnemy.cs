@@ -1,0 +1,328 @@
+﻿using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class MirrorEnemy : MonoBehaviour {
+    private PlayerControl player;
+
+    private float xmov, ymov = 0;
+    private bool ground, pain, busy, deadly, right,kickingDown,SideAttack,UpAttack = false;
+    private int currentLife = 0;
+
+    private Animator anim;
+
+
+    // Use this for initialization
+    void Start()
+    {
+        player = FindObjectOfType<PlayerControl>();
+        anim = GetComponent<Animator>();
+        right = true;
+    }
+
+    private void stopMoving()
+    {
+        xmov = 0;
+        ymov = 0;
+        deadly = false;
+        kickingDown = false;
+        SideAttack = false;
+        UpAttack = false;
+    }
+    private void reset()
+    {
+        xmov = 0;
+        ymov = 0;
+        busy = false;
+        pain = false;
+
+    }
+
+
+    private void seekPlayer()
+    {
+        if (player.transform.position.x > transform.position.x + .2f)
+        {
+            xmov = .3f;
+        }
+        else if (player.transform.position.x < transform.position.x - .2f)
+        {
+            xmov = -.3f;
+        }
+    }
+
+    private void IsVulnerable()
+    {
+        pain = false;
+    }
+
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.name.Equals("Player"))
+        {
+            if (deadly)
+            {
+
+                if (!player.isInvulnerable())
+                {
+
+                    player.takeDamage();
+                }
+            }
+        }
+        if (other.tag.Equals("playerBox"))
+        {
+            if (!pain)
+            {
+                CancelInvoke("attackLeft");
+                CancelInvoke("attackRight");
+                CancelInvoke("isVulnerable");
+                CancelInvoke("attackUp");
+                CancelInvoke("reset");
+                currentLife++;
+                if (currentLife >= 5)
+                {
+                    if (player.life > 0)
+                    {
+                        player.life--;
+                    }
+                    else
+                    {
+                        for (int i = 0; i < 4; i++)
+                        {
+                            player.gainLife();
+                        }
+                    }
+
+                    Destroy(gameObject);
+                }
+                Invoke("IsVulnerable", .4f);
+                Invoke("reset", .6f);
+                pain = true;
+                kickingDown = false;
+                SideAttack = false;
+                UpAttack = false;
+
+
+
+                if (player.transform.position.x > transform.position.x)
+                {
+
+                    xmov = -.15f;
+
+                }
+                else
+
+                {
+                    xmov = .15f;
+                }
+            }
+
+            if (!other.gameObject.name.Equals("UpKick(Clone)"))
+            {
+                ymov = .2f;
+            }
+            deadly = false;
+        }
+
+
+    }
+
+    private void OnTriggerStay2D(Collider2D other)
+    {
+        if (other.tag.Equals("Solid"))
+        {
+            if (transform.position.y > other.transform.position.y + 2.3 * other.transform.localScale.y / 2)
+            {
+                ground = true;
+                ymov = 0;
+
+                if (kickingDown)
+                {
+                    stopMoving();
+                   Invoke("reset",.2f);
+                }
+            }
+        }
+
+        if (other.gameObject.name.Equals("UpKick(Clone)"))
+        {
+            transform.Translate(0, .5f * Time.deltaTime * 60, 0);
+        }
+
+
+        if (other.gameObject.name.Equals("Player"))
+        {
+            if (other.transform.position.x > transform.position.x)
+            {
+                other.transform.Translate(.3f, 0, 0);
+            }
+            else
+            {
+                other.transform.Translate(-.3f, 0, 0);
+            }
+        }
+    }
+
+
+    private void OnTriggerExit2D(Collider2D other)
+    {
+        if (other.tag.Equals("Solid"))
+        {
+            ground = false;
+        }
+    }
+
+    private void flip()
+    {
+        Vector2 localScale = gameObject.transform.localScale;
+        localScale.x = localScale.x * -1;
+        transform.localScale = localScale;
+    }
+
+
+
+
+    void attackRight()
+    {
+        xmov = .4f;
+        Invoke("reset", .5f);
+        Invoke("stopMoving", .2f);
+        deadly = true;
+    }
+    void attackLeft()
+    {
+        xmov = -.4f;
+        Invoke("reset", .5f);
+        Invoke("stopMoving", .2f);
+        deadly = true;
+    }
+    void attackUp()
+    {
+        ymov = .6f;
+        Invoke("reset", .5f);
+        Invoke("stopMoving", .25f);
+        deadly = true;
+    }
+    void downKick()
+    {
+        ymov = -.6f;
+        kickingDown = true;
+        deadly = true;
+    }
+
+    // Update is called once per frame
+    void FixedUpdate()
+    {
+        GetComponent<Rigidbody2D>().velocity = new Vector2(0, 0);
+
+        if (!ground)
+        {
+            ymov -= .01f;
+            if (ymov > 3)
+            {
+                ymov = 3;
+            }
+        }
+
+        if (player.transform.position.x > transform.position.x - 18 && player.transform.position.x < transform.position.x + 30)
+        {
+            if (!pain)
+            {
+                if (!busy)
+                {
+                    seekPlayer();
+                }
+            }
+        }
+        if (player.transform.position.x < transform.position.x + 5 && player.transform.position.x > transform.position.x - 5 && player.transform.position.y < transform.position.y + 2 && player.transform.position.y > transform.position.y - 2)
+        {
+            if (!pain)
+            {
+
+                if (!busy)
+                {
+
+                    SideAttack = true;
+                    busy = true;
+                    xmov = xmov / 2;
+                    if (player.transform.position.x > transform.position.x)
+                    {
+                        if (player.transform.position.x < transform.position.x && !right)
+                        {
+                            flip();
+                            right = true;
+                        }
+                        Invoke("attackRight", .2f);
+                    }
+                    else
+                    {
+                        if (player.transform.position.x < transform.position.x && right)
+                        {
+                            flip();
+                            right = false;
+                        }
+                        Invoke("attackLeft", .2f);
+
+                    }
+
+                }
+            }
+        }
+        else if (player.transform.position.x < transform.position.x + 1.5 && player.transform.position.x > transform.position.x - 1.5 && player.transform.position.y < transform.position.y + 8 && player.transform.position.y > transform.position.y - 1)
+        {
+            if (!pain)
+            {
+                if (ground)
+                {
+                    if (!busy)
+                    {
+                        busy = true;
+                        xmov = 0;
+                        Invoke("attackUp", .15f);
+                       
+                        UpAttack = true;
+                    }
+                }
+            }
+        }
+      /*  else if (player.transform.position.x < transform.position.x + 2 && player.transform.position.x > transform.position.x - 2 && player.transform.position.y < transform.position.y-1)
+        {
+            if (!pain)
+            {
+                if (!ground)
+                {
+                    if (!busy)
+                    {
+                        kickingDown = true;
+                       
+                        busy = true;
+                        xmov = 0;
+                        Invoke("downKick", .15f);
+                    
+                    }
+                }
+            }
+        }*/
+
+        if (player.transform.position.x > transform.position.x && !right && !busy)
+        {
+            flip();
+            right = true;
+        }
+        else if (player.transform.position.x < transform.position.x && right && !busy)
+        {
+            flip();
+            right = false;
+        }
+
+
+        anim.SetBool("Hurt", pain);
+        anim.SetBool("SideAttack", SideAttack);
+       
+        anim.SetBool("HI",UpAttack );
+        anim.SetBool("VerticalAttack", kickingDown );
+
+        transform.Translate(xmov, ymov, 0);
+    }
+}
